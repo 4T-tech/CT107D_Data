@@ -1,0 +1,175 @@
+C51 COMPILER V9.56.0.0   MAIN                                                              01/24/2025 20:26:56 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\Driver) DEBUG OBJECTEXTEND PRI
+                    -NT(.\Listings\main.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include "tim.h"
+   2          #include "seg.h"
+   3          #include <stdio.h>
+   4          #include "key.h"
+   5          #include "ds1302.h"
+   6          #include "ds18B20.h"
+   7          
+   8          unsigned char ucState;              // 系统状态
+   9          unsigned char ucLed=2;              // LED值, 温度控制模式
+  10          unsigned char pucRtc[3] = {0x23, 0x59, 0x30};
+  11          unsigned char ucRtc;                // RTC标志
+  12          unsigned int  uiTemp;               // 温度值
+  13          unsigned char ucTemp=23;            // 温度参数
+  14          
+  15          void Seg_Proc(void);
+  16          void Key_Proc(void);
+  17          void Led_Proc(void);
+  18          // 主函数
+  19          void main(void)
+  20          {
+  21   1        Close_Peripheral();
+  22   1        T1_Init();
+  23   1        DS1302_SetRtc(pucRtc);
+  24   1      
+  25   1        while (1)
+  26   1        {
+  27   2          Seg_Proc();
+  28   2          Key_Proc();
+  29   2          Led_Proc();
+  30   2        }
+  31   1      }
+  32          
+  33          unsigned char pucSeg_Char[12];      // 显示字符
+  34          unsigned char pucSeg_Code[8];       // 显示代码
+  35          unsigned char ucSeg_Pos;            // 显示位置
+  36          unsigned int  uiSeg_Dly;            // 显示刷新延时
+  37          unsigned char ucSeg_Dly;            // 显示移位延时
+  38          void Seg_Proc(void)
+  39          {
+  40   1        if (uiSeg_Dly > 300)              // 300ms刷新1次
+  41   1        {
+  42   2          uiSeg_Dly = 0;
+  43   2       
+  44   2          switch (ucState)
+  45   2          {
+  46   3            case 0:                       // 显示温度
+  47   3              sprintf(pucSeg_Char, "U1   %03.1f", uiTemp/16.0);
+  48   3              break;
+  49   3            case 1:                       // 显示RTC时钟
+  50   3              if (ucRtc == 0)             // 显示时分
+  51   3                sprintf(pucSeg_Char, "U2 %02x-%02x",\
+  52   3                  (unsigned int)pucRtc[0], (int)pucRtc[1]);
+  53   3              else                        // 显示分秒
+  54   3                sprintf(pucSeg_Char, "U2 %02x-%02x",\
+C51 COMPILER V9.56.0.0   MAIN                                                              01/24/2025 20:26:56 PAGE 2   
+
+  55   3                  (unsigned int)pucRtc[1], (int)pucRtc[2]);
+  56   3              break;
+  57   3            case 2:                       // 显示参数
+  58   3              sprintf(pucSeg_Char, "U3    %02u", (int)ucTemp);
+  59   3          }
+  60   2          Seg_Tran(pucSeg_Char, pucSeg_Code);
+  61   2        }
+  62   1        if (ucSeg_Dly >= 2)               // 2ms移位1次
+  63   1        {
+  64   2          ucSeg_Dly = 0;
+  65   2      
+  66   2          Seg_Disp(pucSeg_Code[ucSeg_Pos], ucSeg_Pos);
+  67   2          ucSeg_Pos = ++ucSeg_Pos & 7;
+  68   2        }
+  69   1      }
+  70          
+  71          unsigned char ucKey_Old;            // 旧键值
+  72          unsigned char ucKey_Dly;            // 按键延时
+  73          void Key_Proc(void)
+  74          {
+  75   1        unsigned char ucKey_Dn;           // 按下键值
+  76   1      
+  77   1        if (ucKey_Dly < 10)               // 延时10ms消抖
+  78   1          return;
+  79   1        ucKey_Dly = 0;
+  80   1      
+  81   1        ucKey_Dn = Key_Read();            // 键值读取
+  82   1        if (ucKey_Dn != ucKey_Old)        // 键值变化
+  83   1        {
+  84   2          ucKey_Old = ucKey_Dn;
+  85   2        } else {
+  86   2          ucKey_Dn = 0;
+  87   2        }
+  88   1      
+  89   1        switch (ucKey_Dn)
+  90   1        {
+  91   2          case 12:
+  92   2            if (++ucState == 3)           // S12按键切换状态
+  93   2              ucState = 0;
+  94   2            break;
+  95   2          case 13:
+  96   2            ucLed ^= 2;                   // S13按键切换模式
+  97   2            break;
+  98   2          case 16:
+  99   2            if (ucState == 2)             // 设置界面参数加1
+ 100   2              if (++ucTemp > 99)
+ 101   2                ucTemp = 10;
+ 102   2            break;
+ 103   2          case 17:
+ 104   2            if (ucState == 2)             // 设置界面参数减1
+ 105   2              if (--ucTemp < 10)
+ 106   2                ucTemp = 99;
+ 107   2        }
+ 108   1        if (ucState == 1)
+ 109   1          if (ucKey_Old == 17)            // 时间界面S17键切换时间显示
+ 110   1            ucRtc = 1;                    // 显示分秒
+ 111   1          else
+ 112   1            ucRtc = 0;                    // 显示时分
+ 113   1      }
+ 114          
+ 115          unsigned char ucUln;                // ULN值
+ 116          unsigned char ucLed_Dly;            // LED延时
+C51 COMPILER V9.56.0.0   MAIN                                                              01/24/2025 20:26:56 PAGE 3   
+
+ 117          void Led_Proc(void)
+ 118          {
+ 119   1        if (ucLed_Dly < 100)              // 100ms时间未到
+ 120   1          return;
+ 121   1        ucLed_Dly = 0;
+ 122   1      
+ 123   1        DS1302_GetRtc(pucRtc);            // 获取RTC时钟
+ 124   1        if ((pucRtc[1] == 0) && (pucRtc[2] < 5))
+ 125   1          ucLed |= 1;                     // L1点亮
+ 126   1        else
+ 127   1          ucLed &= ~1;                    // L1熄灭
+ 128   1        if ((ucLed & 2) == 2)             // 温度控制模式
+ 129   1        {
+ 130   2          uiTemp = Temp_Read();           // 读取温度
+ 131   2          if (uiTemp > (ucTemp<<4))
+ 132   2            ucUln = 0x10;                 // 继电器闭合
+ 133   2          else
+ 134   2            ucUln = 0;                    // 继电器断开
+ 135   2        } else {                          // 时间控制模式
+ 136   2          if ((pucRtc[1] == 0) && (pucRtc[2] < 5))
+ 137   2            ucUln = 0x10;                 // 继电器闭合
+ 138   2          else
+ 139   2            ucUln = 0;                    // 继电器断开
+ 140   2        }
+ 141   1        if (ucUln & 0x10)                 // 继电器闭合
+ 142   1          ucLed ^= 4;                     // L3闪烁
+ 143   1        else
+ 144   1          ucLed &= ~4;
+ 145   1        Led_Disp(ucLed);                  // LED显示状态
+ 146   1        Uln_Ctrl(ucUln);                  // ULN控制
+ 147   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    440    ----
+   CONSTANT SIZE    =     36    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     37    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

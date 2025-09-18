@@ -1,0 +1,135 @@
+BL51 BANKED LINKER/LOCATER V6.22                                                        01/24/2025  10:54:07  PAGE 1
+
+
+BL51 BANKED LINKER/LOCATER V6.22, INVOKED BY:
+C:\KEIL_V5\C51\BIN\BL51.EXE .\Objects\main.obj TO .\Objects\IAP15 PRINT (.\Listings\IAP15.m51) RAMSIZE (256)
+
+
+MEMORY MODEL: SMALL
+
+
+INPUT MODULES INCLUDED:
+  .\Objects\main.obj (MAIN)
+  C:\KEIL_V5\C51\LIB\C51S.LIB (?C_STARTUP)
+
+
+LINK MAP OF MODULE:  .\Objects\IAP15 (MAIN)
+
+
+            TYPE    BASE      LENGTH    RELOCATION   SEGMENT NAME
+            -----------------------------------------------------
+
+            * * * * * * *   D A T A   M E M O R Y   * * * * * * *
+            REG     0000H     0008H     ABSOLUTE     "REG BANK 0"
+            IDATA   0008H     0001H     UNIT         ?STACK
+
+            * * * * * * *   C O D E   M E M O R Y   * * * * * * *
+            CODE    0000H     0003H     ABSOLUTE     
+            CODE    0003H     0033H     UNIT         ?PR?MAIN?MAIN
+            CODE    0036H     001EH     UNIT         ?PR?_DELAY?MAIN
+            CODE    0054H     0010H     UNIT         ?PR?CLOSE_PERIPHERAL?MAIN
+            CODE    0064H     000DH     UNIT         ?PR?_P0_OUT?MAIN
+            CODE    0071H     000CH     UNIT         ?C_C51STARTUP
+            CODE    007DH     0008H     UNIT         ?PR?_LED_DISP?MAIN
+
+
+
+OVERLAY MAP OF MODULE:   .\Objects\IAP15 (MAIN)
+
+
+SEGMENT
+  +--> CALLED SEGMENT
+---------------------
+?C_C51STARTUP
+  +--> ?PR?MAIN?MAIN
+
+?PR?MAIN?MAIN
+  +--> ?PR?CLOSE_PERIPHERAL?MAIN
+  +--> ?PR?_LED_DISP?MAIN
+  +--> ?PR?_DELAY?MAIN
+
+?PR?CLOSE_PERIPHERAL?MAIN
+  +--> ?PR?_P0_OUT?MAIN
+
+?PR?_LED_DISP?MAIN
+  +--> ?PR?_P0_OUT?MAIN
+
+
+
+SYMBOL TABLE OF MODULE:  .\Objects\IAP15 (MAIN)
+
+  VALUE           TYPE          NAME
+BL51 BANKED LINKER/LOCATER V6.22                                                      01/24/2025  10:54:07  PAGE 2
+
+
+  ----------------------------------
+
+  -------         MODULE        MAIN
+  C:0000H         SYMBOL        _ICE_DUMMY_
+  D:0080H         PUBLIC        P0
+  D:00A0H         PUBLIC        P2
+  C:007DH         PUBLIC        _Led_Disp
+  C:0064H         PUBLIC        _P0_Out
+  C:0003H         PUBLIC        main
+  C:0054H         PUBLIC        Close_Peripheral
+  C:0036H         PUBLIC        _Delay
+  -------         PROC          _P0_OUT
+  D:0007H         SYMBOL        ucData
+  D:0005H         SYMBOL        ucAddr
+  C:0064H         LINE#         5
+  C:0064H         LINE#         6
+  C:0064H         LINE#         7
+  C:0066H         LINE#         8
+  C:006DH         LINE#         9
+  C:0070H         LINE#         11
+  -------         ENDPROC       _P0_OUT
+  -------         PROC          CLOSE_PERIPHERAL
+  C:0054H         LINE#         13
+  C:0054H         LINE#         14
+  C:0054H         LINE#         15
+  C:0057H         LINE#         16
+  C:005EH         LINE#         17
+  -------         ENDPROC       CLOSE_PERIPHERAL
+  -------         PROC          _LED_DISP
+  D:0007H         SYMBOL        ucLed
+  C:007DH         LINE#         20
+  C:007DH         LINE#         21
+  C:007DH         LINE#         22
+  -------         ENDPROC       _LED_DISP
+  -------         PROC          _DELAY
+  D:0006H         SYMBOL        uiNum
+  -------         DO            
+  D:0004H         SYMBOL        i
+  -------         ENDDO         
+  C:0036H         LINE#         25
+  C:0036H         LINE#         26
+  C:0036H         LINE#         29
+  C:0040H         LINE#         30
+  C:0053H         LINE#         31
+  -------         ENDPROC       _DELAY
+  -------         PROC          MAIN
+  -------         DO            
+  D:0003H         SYMBOL        i
+  D:0001H         SYMBOL        j
+  -------         ENDDO         
+  C:0003H         LINE#         33
+  C:0003H         LINE#         34
+  C:0003H         LINE#         36
+  C:0006H         LINE#         38
+  C:0006H         LINE#         39
+  C:0006H         LINE#         40
+  C:0008H         LINE#         41
+BL51 BANKED LINKER/LOCATER V6.22                                                      01/24/2025  10:54:07  PAGE 3
+
+
+  C:000AH         LINE#         42
+  C:000AH         LINE#         43
+  C:000FH         LINE#         44
+  C:0019H         LINE#         45
+  C:001EH         LINE#         46
+  C:002CH         LINE#         47
+  -------         ENDPROC       MAIN
+  -------         ENDMOD        MAIN
+
+Program Size: data=9.0 xdata=0 code=133
+LINK/LOCATE RUN COMPLETE.  0 WARNING(S),  0 ERROR(S)

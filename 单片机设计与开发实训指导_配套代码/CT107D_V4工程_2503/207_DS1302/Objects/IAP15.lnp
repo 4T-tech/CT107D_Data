@@ -1,0 +1,7 @@
+".\Objects\main.obj",
+".\Objects\tim.obj",
+".\Objects\seg.obj",
+".\Objects\key.obj",
+".\Objects\ds1302.obj" 
+TO ".\Objects\IAP15" 
+PRINT(".\Listings\IAP15.m51") RAMSIZE(256) 

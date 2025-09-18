@@ -1,0 +1,117 @@
+C51 COMPILER V9.56.0.0   TIM                                                               01/25/2025 16:22:17 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE TIM
+OBJECT MODULE PLACED IN .\Objects\tim.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE tim.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\Driver) DEFINE(PCF8591) DEBUG O
+                    -BJECTEXTEND PRINT(.\Listings\tim.lst) TABS(2) OBJECT(.\Objects\tim.obj)
+
+line level    source
+
+   1          #include "seg.h"
+   2          
+   3          sfr  TCON = 0x88;
+   4          sfr  TMOD = 0x89;
+   5          sfr  AUXR = 0x8E;
+   6          sfr  TL1  = 0x8B;
+   7          sfr  TH1  = 0x8D;
+   8          sbit TR1  = TCON^6;
+   9          sbit TF1  = TCON^7;
+  10          
+  11          sfr  IE   = 0xA8;
+  12          sbit ET1  = IE^3;
+  13          sbit EA   = IE^7;
+  14          
+  15          void T1_Init(void)                    // 1毫秒@12.000MHz
+  16          {
+  17   1        AUXR &= 0xBF;                       // 定时器时钟12T模式
+  18   1        TMOD &= 0x0F;                       // 设置定时器模式
+  19   1        TL1 = 0x18;                         // 设置定时初值（24）
+  20   1        TH1 = 0xFC;                         // 设置定时初值（252）
+  21   1        TF1 = 0;                            // 清除TF1标志
+  22   1        TR1 = 1;                            // 定时器1开始计时
+  23   1        ET1 = 1;                            // 允许T1中断
+  24   1        EA  = 1;                            // 允许系统中断
+  25   1      }
+  26          
+  27                 unsigned int  uiTms;           // 毫秒值
+  28          extern unsigned int  uiSec;           // 秒值
+  29          extern unsigned int  uiSeg_Dly;       // 显示刷新延时
+  30          extern unsigned char ucSeg_Dly;       // 显示移位延时
+  31          extern unsigned char ucKey_Dly;       // 按键刷新延时
+  32          extern unsigned char ucLed_Dly;       // LED刷新延时
+  33          extern unsigned char pucSeg_Code[8];  // 显示代码
+  34          extern unsigned char ucSeg_Pos;       // 显示位置
+  35          void T1_Proc(void) interrupt 3
+  36          {
+  37   1        if (++uiTms == 1000)                // 1s时间到
+  38   1        {
+  39   2          uiTms = 0;
+  40   2          uiSec++;
+  41   2        }
+  42   1        uiSeg_Dly++;
+  43   1        ucSeg_Dly++;
+  44   1        ucKey_Dly++;
+  45   1        ucLed_Dly++;
+  46   1      //用中断方式实现数码管循环显示
+  47   1        if (ucSeg_Dly >= 2)                 // 2ms移位1次
+  48   1        {
+  49   2          ucSeg_Dly = 0;
+  50   2      
+  51   2          Seg_Disp(pucSeg_Code[ucSeg_Pos], ucSeg_Pos);
+  52   2          ucSeg_Pos = ++ucSeg_Pos & 7;      // 数码管循环显示
+  53   2        }
+  54   1      }
+C51 COMPILER V9.56.0.0   TIM                                                               01/25/2025 16:22:17 PAGE 2   
+
+  55          
+  56          sfr  CCON   = 0xD8;                     // PCA控制寄存器
+  57          sfr  CL      = 0xE9;                  // PCA低8位定时值
+  58          sfr  CH      = 0xF9;                  // PCA高8位定时值
+  59          sbit CR     = CCON^6;                 // PCA运行控制位
+  60          sbit CF     = CCON^7;                 // PCA溢出标志位
+  61          
+  62          sfr  P1     = 0x90;
+  63          sbit TX     = P1^0;
+  64          sbit RX     = P1^1;
+  65          
+  66          unsigned char Dist_Meas(void)
+  67          {
+  68   1        unsigned char ucNum = 10;
+  69   1      
+  70   1        // TX引脚发送40KHz方波信号驱动超声波发送探头
+  71   1        TX = 0;
+  72   1        CL = 0xf4;                            // 设置PCA低8位定时值
+  73   1        CH = 0xff;                            // 设置PCA高8位定时值
+  74   1        CR = 1;                               // 启动PCA
+  75   1        while (ucNum--)
+  76   1        {
+  77   2          while (!CF);                        // 等待PCA定时时间到
+  78   2          TX ^= 1;                            // 翻转TX
+  79   2          CL = 0xf4;                          // 重置PCA低8位定时值
+  80   2          CH = 0xff;                          // 重置PCA高8位定时值
+  81   2          CF = 0;
+  82   2        }
+  83   1        CR = 0;                               // 关闭PCA
+  84   1        // 接收计时
+  85   1        CL = 0;                               // 设置PCA低8位定时值
+  86   1        CH = 0;                               // 设置PCA高8位定时值
+  87   1        CR = 1;
+  88   1        while(RX && !CF);                   // 等待下降沿
+  89   1        CR = 0;
+  90   1        return ((CH<<8)+CL)*0.017;          // 计算距离：340*100/1000000/2
+  91   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    238    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      2    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
