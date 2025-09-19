@@ -2,7 +2,7 @@ CT107D_Data
 
 四梯单片机竞赛实训平台V40（单片机型号为 IAP15F2K61S2） 资料包
 
-<img src="/Users/mm/Library/Application Support/typora-user-images/image-20250919162950309.png" alt="image-20250919162950309" style="zoom:30%;" />
+<img src="https://github.com/4T-tech/CT107D_Data/blob/master/image/main.png" alt="image-20250919162950309" style="zoom:30%;" />
 
 
 
