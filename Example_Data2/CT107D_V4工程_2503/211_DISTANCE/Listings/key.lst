@@ -1,0 +1,78 @@
+C51 COMPILER V9.56.0.0   KEY                                                               01/24/2025 11:45:45 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE KEY
+OBJECT MODULE PLACED IN .\Objects\key.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE ..\Driver\key.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\Driver) DEBUG OBJECTE
+                    -XTEND PRINT(.\Listings\key.lst) TABS(2) OBJECT(.\Objects\key.obj)
+
+line level    source
+
+   1          // 运行程序时，将J5调整为KBD模式（1-2脚短接）
+   2          sfr  P3  = 0xB0;
+   3          sfr  P4  = 0xC0;
+   4          sbit P34 = P3^4;
+   5          sbit P35 = P3^5;
+   6          sbit P42 = P4^2;
+   7          sbit P44 = P4^4;
+   8          
+   9          unsigned char Key_Read(void)
+  10          {
+  11   1        unsigned int  uiKey_Code;
+  12   1      
+  13   1        P44 = 0; P42 = 1; P35 = 1; P34 = 1; // 第1列（S4~S7）
+  14   1        uiKey_Code = P3;
+  15   1        P44 = 1; P42 = 0;                       // 第2列（S8~S11）
+  16   1        uiKey_Code = (uiKey_Code<<4) | (P3&0x0f);
+  17   1        P42 = 1; P35 = 0;                       // 第3列（S12~S15）
+  18   1        uiKey_Code = (uiKey_Code<<4) | (P3&0x0f);
+  19   1        P35 = 1; P34 = 0;                       // 第4列（S16~S19）
+  20   1        uiKey_Code = (uiKey_Code<<4) | (P3&0x0f);
+  21   1      
+  22   1        switch(~uiKey_Code)
+  23   1        {
+  24   2          case 0x8000: return 4;          // S4
+  25   2          case 0x4000: return 5;          // S5
+  26   2          case 0x2000: return 6;          // S6
+  27   2          case 0x1000: return 7;          // S7
+  28   2          case 0x0800: return 8;          // S8
+  29   2          case 0x0400: return 9;          // S9
+  30   2          case 0x0200: return 10;         // S10
+  31   2          case 0x0100: return 11;         // S11
+  32   2          case 0x0080: return 12;         // S12
+  33   2          case 0x0040: return 13;         // S13
+  34   2          case 0x0020: return 14;         // S14
+  35   2          case 0x0010: return 15;         // S15
+  36   2          case 0x0008: return 16;         // S16
+  37   2          case 0x0004: return 17;         // S17
+  38   2          case 0x0002: return 18;         // S18
+  39   2          case 0x0001: return 19;         // S19
+  40   2          case 0x0c00: return 20;         // S8+S9
+  41   2          default: return 0;
+  42   2        }
+  43   1      // 独立按键程序代码，将J5调整为BTN模式（2-3脚短接）
+  44   1      /*switch(~P3 & 0xf)
+  45   1        {
+  46   1          case 0x8: return 4;             // S4
+  47   1          case 0x4: return 5;             // S5
+  48   1          case 0x2: return 6;             // S6
+  49   1          case 0x1: return 7;             // S7
+  50   1          default: return 0;
+  51   1        }*/
+  52   1      }
+
+
+C51 COMPILER V9.56.0.0   KEY                                                               01/24/2025 11:45:45 PAGE 2   
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    222    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

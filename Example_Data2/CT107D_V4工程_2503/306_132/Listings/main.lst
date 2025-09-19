@@ -1,0 +1,271 @@
+C51 COMPILER V9.56.0.0   MAIN                                                              01/24/2025 20:37:18 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\Driver) DEFINE(AT24C02,PCF8591
+                    -) DEBUG OBJECTEXTEND PRINT(.\Listings\main.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include "tim.h"
+   2          #include "seg.h"
+   3          #include <stdio.h>
+   4          #include "key.h"
+   5          #include "i2c.h"
+   6          
+   7          unsigned int  uiSec;                // 秒值
+   8          unsigned char ucState;              // 系统状态
+   9          unsigned int  uiFreq;               // 频率值
+  10          unsigned char ucFreq=90;            // 频率参数(/100)
+  11          unsigned char ucHumi;               // 湿度值
+  12          unsigned char ucHumi1=40;           // 湿度参数
+  13          unsigned char ucDist;               // 距离值
+  14          unsigned char ucDist1=60;           // 距离参数
+  15          unsigned char ucNum;                // 继电器开关次数
+  16          
+  17          void Seg_Proc(void);
+  18          void Key_Proc(void);
+  19          void Led_Proc(void);
+  20          // 主函数
+  21          void main(void)
+  22          {
+  23   1        Close_Peripheral();
+  24   1        T1_Init();
+  25   1        T0_Init();
+  26   1        T2_Init();
+  27   1      
+  28   1        while (1)
+  29   1        {
+  30   2          Seg_Proc();
+  31   2          Key_Proc();
+  32   2          Led_Proc();
+  33   2        }
+  34   1      }
+  35          
+  36          unsigned char pucSeg_Char[12];      // 显示字符
+  37          unsigned char pucSeg_Code[8];       // 显示代码
+  38          unsigned char ucSeg_Pos;            // 显示位置
+  39          unsigned int  uiSeg_Dly;            // 显示刷新延时
+  40          unsigned char ucSeg_Dly;            // 显示移位延时
+  41          void Seg_Proc(void)
+  42          {
+  43   1        if (uiSeg_Dly > 300)              // 300ms刷新1次
+  44   1        {
+  45   2          uiSeg_Dly = 0;
+  46   2      
+  47   2          switch(ucState)
+  48   2          {
+  49   3            case 0:
+  50   3              sprintf(pucSeg_Char, "F %6u", uiFreq);
+  51   3              break;
+  52   3            case 1:
+  53   3              sprintf(pucSeg_Char, "F %5u.%1u", uiFreq/1000, uiFreq%1000);
+  54   3              break;
+C51 COMPILER V9.56.0.0   MAIN                                                              01/24/2025 20:37:18 PAGE 2   
+
+  55   3            case 0x10:
+  56   3      //      sprintf(pucSeg_Char, "H    %3u", (int)ucHumi);
+  57   3              sprintf(pucSeg_Char, "H %2u %3u", (int)ucNum, (int)ucHumi);
+  58   3              break;                      // 增加继电器开关次数显示
+  59   3            case 0x20:
+  60   3      //      sprintf(pucSeg_Char, "A    %3u", (int)ucDist);
+  61   3              sprintf(pucSeg_Char, "A %2u %3u", (int)ucNum, (int)ucDist);
+  62   3              break;                      // 增加继电器开关次数显示
+  63   3            case 0x21:
+  64   3              sprintf(pucSeg_Char, "A    %3.2f", ucDist/100.0);
+  65   3              break;
+  66   3            case 0x30:
+  67   3              sprintf(pucSeg_Char, "P1   %2u.%1u", ucFreq/10, ucFreq%10);
+  68   3              break;
+  69   3            case 0x31:
+  70   3              sprintf(pucSeg_Char, "P2    %02u", (int)ucHumi1);
+  71   3              break;
+  72   3            case 0x32:
+  73   3              sprintf(pucSeg_Char, "P3    %2.1f", ucDist1/100.0);
+  74   3          }
+  75   2          Seg_Tran(pucSeg_Char, pucSeg_Code);
+  76   2        }
+  77   1      }
+  78          
+  79          unsigned char ucKey_Old;            // 旧键值
+  80          unsigned char ucKey_Dly;            // 按键延时
+  81          void Key_Proc(void)
+  82          {
+  83   1        unsigned char ucKey_Dn;           // 按下键值
+  84   1      
+  85   1        if(ucKey_Dly < 10)                // 延时10ms消抖
+  86   1          return;
+  87   1        ucKey_Dly = 0;
+  88   1      
+  89   1        ucKey_Dn = Key_Read();            // 键值读取
+  90   1        if (ucKey_Dn != ucKey_Old)        // 键值变化
+  91   1        {
+  92   2          ucKey_Old = ucKey_Dn;
+  93   2        } else {
+  94   2          ucKey_Dn = 0;
+  95   2        }
+  96   1      
+  97   1        switch (ucKey_Dn)
+  98   1        {
+  99   2          case 4:                         // S4按键
+ 100   2            ucState &= 0x30;
+ 101   2            ucState += 0x10;              // 切换界面
+ 102   2            if (ucState >= 0x40)
+ 103   2              ucState = 0;
+ 104   2            break;
+ 105   2          case 5:                         // S5按键
+ 106   2            if (ucState >= 0x30)
+ 107   2              if (++ucState >= 0x33)      // 切换参数
+ 108   2                ucState = 0x30;
+ 109   2            break;
+ 110   2          case 8:                         // S8按键
+ 111   2            switch (ucState)
+ 112   2            {
+ 113   3              case 0x20:
+ 114   3              case 0x21:
+ 115   3                ucState ^= 1;             // 切换距离单位
+ 116   3                break;
+C51 COMPILER V9.56.0.0   MAIN                                                              01/24/2025 20:37:18 PAGE 3   
+
+ 117   3              case 0x30:
+ 118   3                ucFreq += 5;
+ 119   3                if (ucFreq > 120)
+ 120   3                  ucFreq = 10;
+ 121   3                break;
+ 122   3              case 0x31:
+ 123   3                ucHumi1 += 10;
+ 124   3                if (ucHumi1 > 60)
+ 125   3                  ucHumi1 = 10;
+ 126   3                break;
+ 127   3              case 0x32:
+ 128   3                ucDist1 += 10;
+ 129   3                if (ucDist1 > 120)
+ 130   3                  ucDist1 = 10;
+ 131   3            }
+ 132   2            break;
+ 133   2          case 9:                         // S9按键
+ 134   2            switch (ucState)
+ 135   2            {
+ 136   3              case 0:
+ 137   3              case 1:
+ 138   3                ucState ^= 1;             // 切换频率单位
+ 139   3                break;
+ 140   3              case 0x30:
+ 141   3                ucFreq -= 5;
+ 142   3                if (ucFreq < 10)
+ 143   3                  ucFreq = 120;
+ 144   3                break;
+ 145   3              case 0x31:
+ 146   3                ucHumi1 -= 10;
+ 147   3                if (ucHumi1 < 10)
+ 148   3                  ucHumi1 = 60;
+ 149   3                break;
+ 150   3              case 0x32:
+ 151   3                ucDist1 -= 10;
+ 152   3                if (ucDist1 < 10)
+ 153   3                  ucDist1 = 120;
+ 154   3            }
+ 155   2            uiSec = 0;                    // 长按计时
+ 156   2        }
+ 157   1        if ((ucState == 0x10) && (ucKey_Old == 9) && (uiSec > 1))
+ 158   1        {
+ 159   2          ucNum = 0;                      // 清零继电器开关次数
+ 160   2          AT24C02_WriteBuffer((unsigned char*)&ucNum, 0, 1);
+ 161   2        }
+ 162   1      }
+ 163          
+ 164          unsigned char ucLed;                // LED值
+ 165          unsigned char ucUln;                // ULN值
+ 166          unsigned char ucLed_Dly;            // LED延时
+ 167          unsigned char ucDuty=2;             // 占空比(/10)
+ 168          void Led_Proc(void)
+ 169          {
+ 170   1        if (ucLed_Dly < 100)
+ 171   1          return;
+ 172   1        ucLed_Dly = 0;
+ 173   1      
+ 174   1        if ((ucState&0xf0) == 0)          // 频率界面
+ 175   1          ucLed |= 1;                     // L1点亮
+ 176   1        else if (ucState == 0x30)         // 频率参数界面
+ 177   1          ucLed ^= 1;                     // L1闪烁
+ 178   1        else
+C51 COMPILER V9.56.0.0   MAIN                                                              01/24/2025 20:37:18 PAGE 4   
+
+ 179   1          ucLed &= ~1;                    // L1熄灭
+ 180   1      
+ 181   1        if (ucState == 0x10)              // 湿度界面
+ 182   1          ucLed |= 2;                     // L2点亮
+ 183   1        else if (ucState == 0x31)         // 湿度参数界面
+ 184   1          ucLed ^= 2;                     // L2闪烁
+ 185   1        else
+ 186   1          ucLed &= ~2;                    // L2熄灭
+ 187   1      
+ 188   1        if ((ucState&0xf0) == 0x20)       // 距离界面
+ 189   1          ucLed |= 4;                     // L3点亮
+ 190   1        else if (ucState == 0x32)         // 距离参数界面
+ 191   1          ucLed ^= 4;                     // L3闪烁
+ 192   1        else
+ 193   1          ucLed &= ~4;                    // L3熄灭
+ 194   1      
+ 195   1        if (uiFreq > ucFreq*100)
+ 196   1        {
+ 197   2          ucLed |= 8;                     // L4点亮
+ 198   2          ucDuty = 8;                     // 占空比80%
+ 199   2        } else {
+ 200   2          ucLed &= ~8;                    // L4熄灭
+ 201   2          ucDuty = 2;                     // 占空比20%
+ 202   2        }
+ 203   1      
+ 204   1        ucHumi = PCF8591_Adc(3)*100/255;
+ 205   1        if (ucHumi > ucHumi1)
+ 206   1        {
+ 207   2          ucLed |= 0x10;                  // L5点亮
+ 208   2          if (ucHumi > 80)
+ 209   2            PCF8591_Dac(255);             // 5V
+ 210   2          else
+ 211   2            PCF8591_Dac(255-204*(80-ucHumi)/(80-ucHumi1));
+ 212   2        } else {
+ 213   2          ucLed &= ~0x10;                 // L5熄灭
+ 214   2          PCF8591_Dac(51);                // 1V
+ 215   2        }
+ 216   1      
+ 217   1        ucDist = Dist_Meas();
+ 218   1        if (ucDist > ucDist1)
+ 219   1        {
+ 220   2          ucLed |= 0x20;                  // L6点亮
+ 221   2          if ((ucUln&0x10) == 0)          // 继电器断开
+ 222   2          {
+ 223   3            ucUln |= 0x10;                // 继电器闭合
+ 224   3            ucNum++;                      // 继电器开关次数
+ 225   3            AT24C02_WriteBuffer((unsigned char*)&ucNum, 0, 1);
+ 226   3          }
+ 227   2        } else {
+ 228   2          ucLed &= ~0x20;                 // L6熄灭
+ 229   2          if ((ucUln&0x10) != 0)          // 继电器闭合
+ 230   2          {
+ 231   3            ucUln &= ~0x10;               // 继电器断开
+ 232   3            ucNum++;                      // 继电器开关次数
+ 233   3            AT24C02_WriteBuffer((unsigned char*)&ucNum, 0, 1);
+ 234   3          }
+ 235   2        }
+ 236   1      
+ 237   1        Led_Disp(ucLed);
+ 238   1        Uln_Ctrl(ucUln);
+ 239   1      }
+
+C51 COMPILER V9.56.0.0   MAIN                                                              01/24/2025 20:37:18 PAGE 5   
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    885    ----
+   CONSTANT SIZE    =     83    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     41    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,1 @@
+"..\Driver\seg.c" OPTIMIZE (8,SPEED) BROWSE INCDIR(..\Driver) DEBUG OBJECTEXTEND PRINT(.\Listings\seg.lst) TABS (2) OBJECT(.\Objects\seg.obj)

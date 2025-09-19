@@ -1,0 +1,301 @@
+C51 COMPILER V9.56.0.0   MAIN                                                              01/25/2025 16:07:24 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\Driver) DEFINE(PCF8591) DEBUG 
+                    -OBJECTEXTEND PRINT(.\Listings\main.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include "tim.h"
+   2          #include "seg.h"
+   3          #include <stdio.h>
+   4          #include "key.h"
+   5          #include "ds1302.h"
+   6          #include "ds18B20.h"
+   7          #include "i2c.h"
+   8          
+   9          unsigned int  uiTms;                // 毫秒值
+  10          unsigned int  uiSec;                // 秒值
+  11          unsigned char ucState;              // 系统状态
+  12          unsigned char pucRtc[3] = {0x23, 0x59, 0x50};
+  13          unsigned char ucAdc;                // ADC值
+  14          unsigned int  uiFreq;               // 频率值
+  15          unsigned char ucCnt;                // 触发次数
+  16          unsigned char ucTemp;               // 温度采集值
+  17          unsigned char ucTmax;               // 温度最大值
+  18          unsigned char ucTcur;               // 温度当前值
+  19          unsigned int  uiTsum;               // 温度累加值
+  20          unsigned char ucTpre;               // 温度历史值
+  21          unsigned char ucHumi;               // 湿度采集值
+  22          unsigned char ucHmax;               // 湿度最大值
+  23          unsigned int  uiHsum;               // 湿度累加值
+  24          unsigned char ucHcur;               // 湿度当前值
+  25          unsigned char ucHpre;               // 湿度历史值
+  26          unsigned char ucPara=30;            // 温度参数值
+  27          unsigned char ucHour;               // 采集时
+  28          unsigned char ucMinu;               // 采集分
+  29          
+  30          void Seg_Proc(void);
+  31          void Key_Proc(void);
+  32          void Led_Proc(void);
+  33          void Data_Proc(void);
+  34          // 主函数
+  35          void main(void)
+  36          {
+  37   1        Close_Peripheral();
+  38   1        T1_Init();
+  39   1        T0_Init();
+  40   1        DS1302_SetRtc(pucRtc);            // 设置RTC时钟
+  41   1      
+  42   1        while (1)
+  43   1        {
+  44   2          Seg_Proc();
+  45   2          Key_Proc();
+  46   2          Led_Proc();
+  47   2          Data_Proc();
+  48   2        }
+  49   1      }
+  50          
+  51          unsigned char pucSeg_Char[12];      // 显示字符
+  52          unsigned char pucSeg_Code[8];       // 显示代码
+  53          unsigned char ucSeg_Pos;            // 显示位置
+  54          unsigned int  uiSeg_Dly;            // 显示刷新延时
+C51 COMPILER V9.56.0.0   MAIN                                                              01/25/2025 16:07:24 PAGE 2   
+
+  55          unsigned char ucSeg_Dly;            // 显示移位延时
+  56          void Seg_Proc(void)
+  57          {
+  58   1        if (uiSeg_Dly > 300)              // 300ms刷新1次
+  59   1        {
+  60   2          uiSeg_Dly = 0;
+  61   2       
+  62   2          switch (ucState)
+  63   2          {
+  64   3            case 0:                       // 时间界面
+  65   3              sprintf(pucSeg_Char, "%02x-%02x-%02x",\
+  66   3                (int)pucRtc[0], (int)pucRtc[1], (int)pucRtc[2]);
+  67   3              break;
+  68   3            case 1:                       // 温度界面（增加功能）
+  69   3              sprintf(pucSeg_Char, "C     %02u", (int)ucTemp);
+  70   3              break;
+  71   3            case 2:                       // 亮暗界面（增加功能）
+  72   3              sprintf(pucSeg_Char, "A    %03u", (int)ucAdc);
+  73   3              break;
+  74   3            case 3:                       // 频率界面（增加功能）
+  75   3              sprintf(pucSeg_Char, "F  %05u", uiFreq);
+  76   3              break;
+  77   3            case 0x10:                    // 温度回显
+  78   3              if (ucCnt == 0)
+  79   3                sprintf(pucSeg_Char, "C       ");
+  80   3              else
+  81   3                sprintf(pucSeg_Char, "C %02u-%3.1f", \
+  82   3                  (int)ucTmax, (float)uiTsum/ucCnt);
+  83   3             break;
+  84   3            case 0x11:                    // 温度回显
+  85   3              if (ucCnt == 0)
+  86   3                sprintf(pucSeg_Char, "H       ");
+  87   3              else
+  88   3                sprintf(pucSeg_Char, "H %02u-%3.1f", \
+  89   3                  (int)ucHmax, (float)uiHsum/ucCnt);
+  90   3              break;
+  91   3            case 0x12:                    // 时间回显
+  92   3              if (ucCnt == 0)
+  93   3                sprintf(pucSeg_Char, "F%02u     ", (int)ucCnt);
+  94   3              else
+  95   3                sprintf(pucSeg_Char, "F%02u%02x-%02x",
+  96   3                  (int)ucCnt, (int)ucHour, (int)ucMinu);
+  97   3              break;
+  98   3            case 0x20:                    // 参数界面
+  99   3              sprintf(pucSeg_Char, "P     %02u", (int)ucPara);
+ 100   3              break;
+ 101   3            case 0x50:                    // 温湿度界面
+ 102   3              sprintf(pucSeg_Char, "E  %02u-%02u", (int)ucTcur, (int)ucHcur);
+ 103   3              if (ucHumi == 0)
+ 104   3                pucSeg_Char[6] = pucSeg_Char[7] = 'A';
+ 105   3          }
+ 106   2          Seg_Tran(pucSeg_Char, pucSeg_Code);
+ 107   2        }
+ 108   1        if (ucSeg_Dly >= 2)               // 2ms移位1次
+ 109   1        {
+ 110   2          ucSeg_Dly = 0;
+ 111   2      
+ 112   2          Seg_Disp(pucSeg_Code[ucSeg_Pos], ucSeg_Pos);
+ 113   2          ucSeg_Pos = ++ucSeg_Pos & 7;
+ 114   2        }
+ 115   1      }
+ 116          
+C51 COMPILER V9.56.0.0   MAIN                                                              01/25/2025 16:07:24 PAGE 3   
+
+ 117          unsigned char ucKey_Old;            // 旧键值
+ 118          unsigned char ucKey_Dly;            // 按键延时
+ 119          void Key_Proc(void)
+ 120          {
+ 121   1        unsigned char ucKey_Dn;           // 按下键值
+ 122   1      
+ 123   1        if (ucState == 0x50)
+ 124   1          return;
+ 125   1      
+ 126   1        if (ucKey_Dly < 10)               // 10ms时间未到
+ 127   1          return;                         // 延时消抖
+ 128   1        ucKey_Dly = 0;
+ 129   1      
+ 130   1        ucKey_Dn = Key_Read();            // 键值读取
+ 131   1        if (ucKey_Dn != ucKey_Old)        // 键值变化
+ 132   1        {
+ 133   2          ucKey_Old = ucKey_Dn;
+ 134   2        } else {
+ 135   2          ucKey_Dn = 0;
+ 136   2        }
+ 137   1      
+ 138   1        switch (ucKey_Dn)
+ 139   1        {
+ 140   2          case 4:                         // S4按键
+ 141   2            ucState &= 0xf0;
+ 142   2            ucState += 0x10;              // 切换主界面
+ 143   2            if (ucState == 0x30)
+ 144   2              ucState = 0;
+ 145   2            break;
+ 146   2          case 5:                         // S5按键
+ 147   2            if ((ucState & 0xf0) == 0)
+ 148   2              if (++ucState == 4)         // 切换时间界面
+ 149   2                ucState = 0;
+ 150   2            if ((ucState & 0xf0) == 0x10)
+ 151   2              if (++ucState == 0x13)      // 切换回显界面
+ 152   2                ucState = 0x10;
+ 153   2            break;
+ 154   2          case 8:                         // S8按键
+ 155   2            if (ucState == 0x20)          // 参数界面
+ 156   2              if (++ucPara == 100)
+ 157   2                ucPara = 0;
+ 158   2            break;
+ 159   2          case 9:                         // S9按键
+ 160   2            if (ucState == 0x20)          // 参数界面
+ 161   2              if (ucPara == 0)
+ 162   2                ucPara = 99;
+ 163   2              else
+ 164   2                ucPara--;
+ 165   2            if (ucState == 0x12)          // 时间回显
+ 166   2              uiSec = 0;
+ 167   2        }
+ 168   1        if (ucState == 0x12)              // 时间回显
+ 169   1          if ((ucKey_Old == 9) && (uiSec >= 2))
+ 170   1          {
+ 171   2            ucTmax = ucHmax = 0;          // 清除记录数据
+ 172   2            uiTsum = uiHsum = 0;
+ 173   2            ucCnt = 0;
+ 174   2          }
+ 175   1      }
+ 176          
+ 177          unsigned char ucLed;                // LED值
+ 178          unsigned int  uiLed_Dly;            // LED刷新延时
+C51 COMPILER V9.56.0.0   MAIN                                                              01/25/2025 16:07:24 PAGE 4   
+
+ 179          void Led_Proc(void)
+ 180          {
+ 181   1        if (uiLed_Dly < 100)              // 100ms时间到
+ 182   1          return;
+ 183   1        uiLed_Dly = 0;
+ 184   1      
+ 185   1        if ((ucState & 0xf0) == 0)
+ 186   1          ucLed |= 1;                     // L1操作
+ 187   1        else
+ 188   1          ucLed &= ~1;
+ 189   1      
+ 190   1        if ((ucState & 0xf0) == 0x10)
+ 191   1          ucLed |= 2;                     // L2操作
+ 192   1        else
+ 193   1          ucLed &= ~2;
+ 194   1      
+ 195   1        if (ucState == 0x50)
+ 196   1          ucLed |= 4;                     // L3操作
+ 197   1        else
+ 198   1          ucLed &= ~4;
+ 199   1      
+ 200   1        if (ucTemp > ucPara)
+ 201   1          ucLed ^= 8;                     // L4操作
+ 202   1        else
+ 203   1          ucLed &= ~8;
+ 204   1      
+ 205   1        if ((uiFreq < 200) || (uiFreq > 2000))
+ 206   1          ucLed |= 0x10;                  // L5操作
+ 207   1        else
+ 208   1          ucLed &= ~0x10;
+ 209   1      
+ 210   1        if ((ucCnt >= 2) && (ucHcur > ucHpre) && (ucTcur > ucTpre))
+ 211   1          ucLed |= 0x20;                  // L6操作
+ 212   1        else
+ 213   1          ucLed &= ~0x20;
+ 214   1      
+ 215   1        Led_Disp(ucLed);                  // LED显示状态
+ 216   1      }
+ 217          
+ 218          bit bLsta;                          // 亮暗当前状态
+ 219          bit bLold;                          // 亮暗历史状态
+ 220          unsigned int  uiData_Dly;           // 数据刷新延时
+ 221          void Data_Proc(void)
+ 222          {
+ 223   1        static unsigned char ucSold;      // 原系统状态
+ 224   1      
+ 225   1        if (uiData_Dly < 300)             // 300ms时间未到
+ 226   1          return;
+ 227   1        uiData_Dly = 0;
+ 228   1      
+ 229   1        DS1302_GetRtc(pucRtc);            // 获取RTC时钟
+ 230   1        ucTemp = Temp_Read()>>4;
+ 231   1        if ((uiFreq > 200) && (uiFreq < 2000))
+ 232   1          ucHumi = uiFreq * 10 / 225 + 1.1;
+ 233   1        else
+ 234   1          ucHumi = 0;
+ 235   1      
+ 236   1        ucAdc = PCF8591_Adc(1);
+ 237   1        if (ucAdc > 80)
+ 238   1          bLsta = 1;                      // 亮状态
+ 239   1        else
+ 240   1          bLsta = 0;                      // 暗状态
+C51 COMPILER V9.56.0.0   MAIN                                                              01/25/2025 16:07:24 PAGE 5   
+
+ 241   1        if ((bLold != bLsta) && (uiSec > 3))
+ 242   1        {
+ 243   2          bLold = bLsta;                  // 保存亮暗状态
+ 244   2          if (bLsta == 0)
+ 245   2          {
+ 246   3            if (ucHumi != 0)
+ 247   3            {
+ 248   4              ucCnt++;
+ 249   4              ucHour = pucRtc[0];         // 保存数据
+ 250   4              ucMinu = pucRtc[1];
+ 251   4              if (ucTemp > ucTmax)
+ 252   4                ucTmax = ucTemp;
+ 253   4              if (ucHumi > ucHmax)
+ 254   4                ucHmax = ucHumi;
+ 255   4              uiTsum += ucTemp;           // 累加数据
+ 256   4              uiHsum += ucHumi;
+ 257   4              ucTpre = ucTcur;
+ 258   4              ucHpre = ucHcur;
+ 259   4            }
+ 260   3            ucTcur = ucTemp;
+ 261   3            ucHcur = ucHumi;
+ 262   3            ucSold = ucState;             // 保存状态
+ 263   3            ucState = 0x50;
+ 264   3            uiSec = 0;
+ 265   3          }
+ 266   2        }
+ 267   1        if ((ucState == 0x50) && (uiSec > 3))
+ 268   1          ucState = ucSold;               // 恢复状态
+ 269   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1081    ----
+   CONSTANT SIZE    =    138    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     59    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      2    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

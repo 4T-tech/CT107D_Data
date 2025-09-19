@@ -1,0 +1,281 @@
+C51 COMPILER V9.56.0.0   MAIN                                                              01/25/2025 16:18:20 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\Driver) DEFINE(PCF8591) DEBUG 
+                    -OBJECTEXTEND PRINT(.\Listings\main.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include "tim.h"
+   2          #include "seg.h"
+   3          #include <stdio.h>
+   4          #include "key.h"
+   5          #include "ds18b20.h"
+   6          #include "i2c.h"
+   7          
+   8          unsigned int  uiSec;                // 秒值
+   9          unsigned char ucState;              // 系统状态
+  10          unsigned int  uiTemp;               // 温度值
+  11          unsigned char ucDrec;               // 记录状态
+  12            signed char scDist;               // 距离值
+  13            signed char scCali=0;             // 校准值
+  14          unsigned char ucPdist=40;           // 距离参数
+  15          unsigned char ucPtemp=30;           // 温度参数
+  16          unsigned int  uiSpeed=340;          // 速度值
+  17          unsigned char ucVol=10;             // 下限值(*10)
+  18          
+  19          void Seg_Proc(void);
+  20          void Key_Proc(void);
+  21          void Led_Proc(void);
+  22          void Data_Proc(void);
+  23          // 主函数
+  24          void main(void)
+  25          {
+  26   1        Close_Peripheral();
+  27   1        T1_Init();
+  28   1      
+  29   1        while (1)
+  30   1        {
+  31   2          Seg_Proc();
+  32   2          Key_Proc();
+  33   2          Led_Proc();
+  34   2          Data_Proc();
+  35   2        }
+  36   1      }
+  37          
+  38          unsigned char pucSeg_Char[12];      // 显示字符
+  39          unsigned char pucSeg_Code[8];       // 显示代码
+  40          unsigned char ucSeg_Pos;            // 显示位置
+  41          unsigned int  uiSeg_Dly;            // 显示刷新延时
+  42          unsigned char ucSeg_Dly;            // 显示移位延时
+  43          void Seg_Proc(void)
+  44          {
+  45   1        if (uiSeg_Dly > 300)              // 300ms刷新1次
+  46   1        {
+  47   2          uiSeg_Dly = 0;
+  48   2      
+  49   2          switch (ucState)
+  50   2          {
+  51   3            case 0:                       // 测距界面（cm）
+  52   3      //      sprintf(pucSeg_Char, "%3.1f- %3u",
+  53   3      //        uiTemp/16.0, (signed)scDist);
+  54   3              sprintf(pucSeg_Char, "%3.1f-%1u%3u",
+C51 COMPILER V9.56.0.0   MAIN                                                              01/25/2025 16:18:20 PAGE 2   
+
+  55   3                uiTemp/16.0, (int)ucDrec, (signed)scDist);
+  56   3              break;                      // 增加记录状态显示
+  57   3            case 1:                       // 测距界面（m）
+  58   3              sprintf(pucSeg_Char, "%3.1f- %3.2f", uiTemp/16.0, scDist/100.0);
+  59   3              break;
+  60   3            case 0x10:                    // 距离参数
+  61   3              sprintf(pucSeg_Char, "P1    %2u", (int)ucPdist);
+  62   3              break;
+  63   3            case 0x11:                    // 温度参数
+  64   3              sprintf(pucSeg_Char, "P2    %2u", (int)ucPtemp);
+  65   3              break;
+  66   3            case 0x20:                    // 校准值设置
+  67   3              sprintf(pucSeg_Char, "F1   %3d", (signed)scCali);
+  68   3              break;
+  69   3            case 0x21:                    // 速度设置
+  70   3              sprintf(pucSeg_Char, "F2  %4u", (int)uiSpeed);
+  71   3              break;
+  72   3            case 0x22:                    // DAC输出设置
+  73   3              sprintf(pucSeg_Char, "F3    %2.1f", (int)ucVol/10.0);
+  74   3          }
+  75   2          Seg_Tran(pucSeg_Char, pucSeg_Code);
+  76   2        }
+  77   1      }
+  78          
+  79          unsigned char ucKey_Old;            // 旧键值
+  80          unsigned char ucKey_Dly;            // 按键刷新延时
+  81          void Key_Proc(void)
+  82          {
+  83   1        unsigned char ucKey_Dn;           // 按下键值
+  84   1      
+  85   1        if (ucDrec == 1)                  // 记录数据状态
+  86   1          return;
+  87   1      
+  88   1        if(ucKey_Dly < 10)                // 延时10ms消抖
+  89   1          return;
+  90   1        ucKey_Dly = 0;
+  91   1      
+  92   1        ucKey_Dn = Key_Read();            // 键值读取
+  93   1        if (ucKey_Dn != ucKey_Old)        // 键值变化
+  94   1        {
+  95   2          ucKey_Old = ucKey_Dn;
+  96   2        } else {
+  97   2          ucKey_Dn = 0;
+  98   2        }
+  99   1      
+ 100   1        switch (ucKey_Dn)
+ 101   1        {
+ 102   2          case 4:                         // S4按键按下
+ 103   2            ucState &= 0xf0;              // 清除次状态
+ 104   2            ucState += 0x10;              // 修改主状态
+ 105   2            if (ucState == 0x30)
+ 106   2              ucState = 0;
+ 107   2            break;
+ 108   2          case 5:                         // S5按键按下
+ 109   2            switch (ucState & 0xf0)
+ 110   2            {
+ 111   3              case 0:
+ 112   3              case 0x10:
+ 113   3                ucState ^= 1;             // 切换次状态
+ 114   3                break;
+ 115   3              case 0x20:
+ 116   3                ucState++;                // 修改次状态
+C51 COMPILER V9.56.0.0   MAIN                                                              01/25/2025 16:18:20 PAGE 3   
+
+ 117   3                if (ucState == 0x23)
+ 118   3                  ucState = 0x20;
+ 119   3            }
+ 120   2            break;
+ 121   2          case 8:                         // S8按键按下
+ 122   2            switch (ucState)
+ 123   2            {
+ 124   3              case 0:
+ 125   3                ucDrec = 1;               // 记录数据
+ 126   3                break;
+ 127   3              case 0x10:
+ 128   3                if (ucPdist < 90)
+ 129   3                  ucPdist += 10;          // 距离参数增加
+ 130   3                break;
+ 131   3              case 0x11:
+ 132   3                if (ucPtemp < 80)
+ 133   3                  ucPtemp++;              // 温度参数增加
+ 134   3                break;
+ 135   3              case 0x20:
+ 136   3                if (scCali < 90)
+ 137   3                  scCali += 5;            // 校准值增加
+ 138   3                break;
+ 139   3              case 0x21:
+ 140   3                if (uiSpeed < 9990)
+ 141   3                  uiSpeed += 10;          // 速度值增加
+ 142   3                break;
+ 143   3              case 0x22:
+ 144   3                if (ucVol < 20)
+ 145   3                  ucVol++;                // 下限值增加
+ 146   3            }
+ 147   2            uiSec = 0;
+ 148   2            break;
+ 149   2          case 9:                         // S9按键按下
+ 150   2            switch (ucState)
+ 151   2            {
+ 152   3              case 0:
+ 153   3                if (ucDrec == 2)
+ 154   3                  ucDrec = 3;             // 输出数据
+ 155   3                break;
+ 156   3              case 0x10:
+ 157   3                if (ucPdist > 10)
+ 158   3                  ucPdist -= 10;          // 距离参数减少
+ 159   3                break;
+ 160   3              case 0x11:
+ 161   3                if (ucPtemp > 0)
+ 162   3                  ucPtemp--;              // 温度参数减少
+ 163   3                break;
+ 164   3              case 0x20:
+ 165   3                if (scCali > -90)
+ 166   3                  scCali -= 5;            // 校准值减少
+ 167   3                break;
+ 168   3              case 0x21:
+ 169   3                if (uiSpeed > 10)
+ 170   3                  uiSpeed -= 10;          // 速度值减少
+ 171   3                break;
+ 172   3              case 0x22:
+ 173   3                if (ucVol > 1)
+ 174   3                  ucVol--;                // 下限值减少
+ 175   3            }
+ 176   2            uiSec = 0;
+ 177   2        }
+ 178   1        if ((ucKey_Old == 20) && (uiSec >= 2))
+C51 COMPILER V9.56.0.0   MAIN                                                              01/25/2025 16:18:20 PAGE 4   
+
+ 179   1        {                                 // S8+S9按下2s
+ 180   2          ucState = 0;                    // 测距界面
+ 181   2          ucPdist = 40;                   // 距离参数
+ 182   2          ucPtemp = 30;                   // 温度参数
+ 183   2          uiSpeed = 340;                  // 速度值
+ 184   2          ucVol = 10;                     // 下限值(*10)
+ 185   2          scCali = 0;                     // 校准值
+ 186   2          ucDrec = 0;                     // 记录状态
+ 187   2        }
+ 188   1      }
+ 189          
+ 190          unsigned char ucLed;                // LED值
+ 191          unsigned char ucLed_Dly;            // LED延时
+ 192          void Led_Proc(void)
+ 193          {
+ 194   1        if(ucLed_Dly < 100)               // 延时100ms
+ 195   1          return;
+ 196   1        ucLed_Dly = 0;
+ 197   1      
+ 198   1        switch (ucState & 0xf0)
+ 199   1        {
+ 200   2          case 0:
+ 201   2            ucLed = scDist;
+ 202   2            break;
+ 203   2          case 0x10:
+ 204   2            ucLed = 0x80;
+ 205   2            break;
+ 206   2          case 0x20:
+ 207   2            ucLed &= 1;
+ 208   2            ucLed ^= 1;
+ 209   2        }
+ 210   1        Led_Disp(ucLed);
+ 211   1      }
+ 212          
+ 213          unsigned int  uiSec1;               // 秒值1
+ 214            signed char scData[7];            // 距离值记录
+ 215          unsigned char ucUln;                // ULN值
+ 216          void Data_Proc(void)
+ 217          {
+ 218   1        if (uiSec1 == uiSec)
+ 219   1          return;
+ 220   1        uiSec1 = uiSec;
+ 221   1      
+ 222   1        uiTemp = Temp_Read();
+ 223   1        scDist = Dist_Meas()*uiSpeed/340 + scCali;
+ 224   1      
+ 225   1        if ((scDist >= ucPdist-5) && (scDist <= ucPdist+5)
+ 226   1          && (uiTemp <= (ucPtemp<<4)))
+ 227   1          ucUln = 0x10;                   // 继电器闭合
+ 228   1        else
+ 229   1          ucUln = 0;                      // 继电器断开
+ 230   1        Uln_Ctrl(ucUln);
+ 231   1      
+ 232   1        switch (ucDrec)
+ 233   1        {
+ 234   2          case 1:                         // 记录数据
+ 235   2            scData[uiSec] = scDist;
+ 236   2            if (uiSec == 6)
+ 237   2              ucDrec = 2;                 // 完成记录
+ 238   2            break;
+ 239   2          case 3:                         // 输出数据
+ 240   2            if (scData[uiSec] < 10)
+C51 COMPILER V9.56.0.0   MAIN                                                              01/25/2025 16:18:20 PAGE 5   
+
+ 241   2              PCF8591_Dac(ucVol * 5.1);   // ucVol*255/50
+ 242   2            else if (scData[uiSec] > 90)
+ 243   2              PCF8591_Dac(255);           // 5V
+ 244   2            else
+ 245   2              PCF8591_Dac(255 - (50-ucVol) * (90 - scData[uiSec]) * 0.06375);
+ 246   2            if (uiSec == 6)
+ 247   2              ucDrec = 2;                 // 完成输出
+ 248   2        }
+ 249   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1063    ----
+   CONSTANT SIZE    =     75    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     51    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

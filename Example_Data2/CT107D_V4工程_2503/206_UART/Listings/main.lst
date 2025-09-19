@@ -1,0 +1,153 @@
+C51 COMPILER V9.56.0.0   MAIN                                                              01/25/2025 07:18:59 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\Driver) DEBUG OBJECTEXTEND PRI
+                    -NT(.\Listings\main.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          // 使用程序前，将J13调整为IO模式（2-3脚短接）
+   2          #include "tim.h"
+   3          #include "seg.h"
+   4          #include <stdio.h>
+   5          #include "key.h"
+   6          #include "uart.h"
+   7          
+   8          unsigned int  uiTms;                  // 毫秒值
+   9          unsigned int  uiSec;                  // 秒值
+  10          unsigned char ucState;                // 系统状态
+  11          
+  12          void Led_Proc(void);
+  13          void Seg_Proc(void);
+  14          void Key_Proc(void);
+  15          void Uart_Proc(void);
+  16          // 主函数
+  17          void main(void)
+  18          {
+  19   1        Close_Peripheral();
+  20   1        T1_Init();
+  21   1        Uart_Init();
+  22   1        
+  23   1        while (1)
+  24   1        {
+  25   2          Seg_Proc();
+  26   2          Key_Proc();
+  27   2          Led_Proc();
+  28   2          Uart_Proc();
+  29   2        }
+  30   1      }
+  31          
+  32          unsigned char pucSeg_Char[12];        // 显示字符
+  33          unsigned char pucSeg_Code[8];         // 显示代码
+  34          unsigned char ucSeg_Pos;              // 显示位置
+  35          unsigned int  uiSeg_Dly;              // 显示刷新延时
+  36          unsigned char ucSeg_Dly;              // 显示移位延时
+  37          // 注意：sprintf()会在字符串后面添加”\0”，所以pucSeg_Buf[]的长度至少应为9。
+  38          // 如果字符串中包含小数点，pucSeg_Buf[]的长度至少应为10。
+  39          void Seg_Proc(void)
+  40          {
+  41   1        if (uiSeg_Dly > 300)                // 300ms刷新1次
+  42   1        {
+  43   2          uiSeg_Dly = 0;
+  44   2      
+  45   2          sprintf(pucSeg_Char, "%02x  %04u\r\n", (int)ucState, uiSec);
+  46   2          Seg_Tran(pucSeg_Char, pucSeg_Code);
+  47   2        }
+  48   1        if (ucSeg_Dly >= 2)                 // 2ms移位1次
+  49   1        {
+  50   2          ucSeg_Dly = 0;
+  51   2      
+  52   2          Seg_Disp(pucSeg_Code[ucSeg_Pos], ucSeg_Pos);
+  53   2          ucSeg_Pos = ++ucSeg_Pos & 7;      // 数码管循环显示
+  54   2        }
+C51 COMPILER V9.56.0.0   MAIN                                                              01/25/2025 07:18:59 PAGE 2   
+
+  55   1      }
+  56          
+  57          unsigned char ucKey_Old;              // 旧键值
+  58          unsigned char ucKey_Dly;              // 按键刷新延时
+  59          unsigned int  uiKey_Dly=500;          // 双击或长按延时
+  60          void Key_Proc(void)
+  61          {
+  62   1        unsigned char ucKey_Dn;             // 按下键值
+  63   1        unsigned char ucKey_Up;             // 松开键值
+  64   1      
+  65   1        if(ucKey_Dly < 10)                  // 延时10ms消抖
+  66   1          return;
+  67   1        ucKey_Dly = 0;
+  68   1      
+  69   1        ucKey_Dn = Key_Read();              // 键值读取
+  70   1        if (ucKey_Dn != ucKey_Old)          // 键值变化
+  71   1        {
+  72   2          ucKey_Up = ucKey_Old;             // 保存键值
+  73   2          ucKey_Old = ucKey_Dn;
+  74   2        } else {
+  75   2          ucKey_Up = 0;                     // 清除键值
+  76   2          ucKey_Dn = 0;
+  77   2        }
+  78   1      
+  79   1        if (ucKey_Dn == 4)                  // S4按下
+  80   1        {
+  81   2          ucState ^= 0x10;                  // 修改主状态（L5翻转）
+  82   2          if (uiKey_Dly < 500)              // S4双击
+  83   2            ucState ^= 2;                   // 修改次状态（L2翻转）
+  84   2          uiKey_Dly = 0;                    // 开始计时
+  85   2        }
+  86   1      
+  87   1        if (ucKey_Up == 4)                  // S4松开
+  88   1            ucState ^= 1;                   // 修改次状态（L1翻转）
+  89   1        if ((ucKey_Old == 4) && (uiKey_Dly > 1000))
+  90   1        {                                   // S4长按
+  91   2          ucState ^= 4;                     // 修改次状态（L3翻转）
+  92   2          uiKey_Dly = 0;                    // 重新计时
+  93   2        }
+  94   1      }
+  95          
+  96          void Led_Proc(void)
+  97          {
+  98   1        Led_Disp(ucState);
+  99   1      }
+ 100          
+ 101          unsigned int  uiUsec;                 // 秒值
+ 102          unsigned char pucUart_Buf[10];        // 串行口缓存
+ 103          unsigned char ucUart_Num;             // 串行口接收字符计数
+ 104          void Uart_Proc(void)
+ 105          {
+ 106   1        if (uiUsec != uiSec)
+ 107   1        {
+ 108   2          uiUsec = uiSec;
+ 109   2          printf(pucSeg_Char);
+ 110   2        }
+ 111   1      
+ 112   1        Uart_RecvString();                  // 可用中断方式实现
+ 113   1        if (ucUart_Num > 0x80)              // 接收完成
+ 114   1        {
+ 115   2          if (ucUart_Num == 0x82)
+ 116   2            uiSec = ((pucUart_Buf[0]-'0')*10) + pucUart_Buf[1]-'0';
+C51 COMPILER V9.56.0.0   MAIN                                                              01/25/2025 07:18:59 PAGE 3   
+
+ 117   2          ucUart_Num = 0;
+ 118   2        }
+ 119   1      }
+ 120          
+ 121          char putchar(char c)
+ 122          {
+ 123   1        Uart_SendChar(c);
+ 124   1        return c;
+ 125   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    289    ----
+   CONSTANT SIZE    =     13    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     46       2
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

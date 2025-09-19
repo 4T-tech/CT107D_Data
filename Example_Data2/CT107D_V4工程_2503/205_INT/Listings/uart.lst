@@ -1,0 +1,66 @@
+C51 COMPILER V9.56.0.0   UART                                                              01/24/2025 11:46:48 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE UART
+OBJECT MODULE PLACED IN .\Objects\uart.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE ..\Driver\uart.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\Driver) DEBUG OBJECT
+                    -EXTEND PRINT(.\Listings\uart.lst) TABS(2) OBJECT(.\Objects\uart.obj)
+
+line level    source
+
+   1          sfr SCON = 0x98;
+   2          sfr SBUF = 0x99;
+   3          sfr AUXR = 0x8e;
+   4          sfr T2L = 0xd7;
+   5          sfr T2H = 0xd6;
+   6          sbit TI = SCON^1;
+   7          sbit RI = SCON^0;
+   8          
+   9          void Uart_Init(void)                  // 9600bps@12.000MHz
+  10          {
+  11   1        SCON = 0x50;                        // 8位数据,可变波特率
+  12   1        AUXR |= 0x01;                       // 串行口1选择定时器2为波特率发生器
+  13   1        AUXR |= 0x04;                       // 定时器2时钟为Fosc, 即1T
+  14   1        T2L = 0xC7;                         // 设定定时初值
+  15   1        T2H = 0xFE;                         // 设定定时初值
+  16   1        AUXR |= 0x10;                       // 启动定时器2
+  17   1      }
+  18          
+  19                 unsigned char ucUart_Dly;      // 串行口接收字符延时
+  20          extern unsigned char pucUart_Buf[10]; // 串行口缓存
+  21          extern unsigned char ucUart_Num;      // 串行口接收字符计数
+  22          void Uart_RecvString(void)
+  23          {
+  24   1        if (RI)
+  25   1        {
+  26   2          pucUart_Buf[ucUart_Num++] = SBUF;
+  27   2          RI = 0;
+  28   2          ucUart_Dly = 0;                   // 开始计时
+  29   2        }
+  30   1        if ((ucUart_Dly > 200) && (ucUart_Num != 0))
+  31   1        {                                   // 串行口接收完成
+  32   2          pucUart_Buf[ucUart_Num] = 0;
+  33   2          ucUart_Num |= 0x80;               // 设置接收完成标志
+  34   2        }
+  35   1      }
+  36          
+  37          void Uart_SendChar(unsigned char c)
+  38          {
+  39   1        SBUF = c;
+  40   1        while (TI == 0);
+  41   1        TI = 0;
+  42   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     65    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      1    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
