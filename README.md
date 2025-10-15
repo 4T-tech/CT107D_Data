@@ -58,4 +58,4 @@
 
 - 微信公众号：微信搜索“四梯”
 
-  <div style="text-align: center;">   <img src="[7]图片/4T_B站.png" alt="4T_B站" width="20%" style="display: inline-block;">   <img src="[7]图片/4T_公众号.png" alt="4T_公众号" width="20%" style="display: inline-block;"> </div> 
+  <div style="text-align: center;">   <img src="%5B7%5D图片/4T_B站.png" alt="4T_B站" width="20%" style="display: inline-block;">   <img src="%5B7%5D图片/4T_公众号.png" alt="4T_公众号" width="20%" style="display: inline-block;"> </div> 
