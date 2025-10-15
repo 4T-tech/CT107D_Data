@@ -2,6 +2,8 @@
 
 四梯单片机竞赛实训平台（单片机型号为 IAP15F2K61S2） 资料包
 
+<img src="[7]图片/蓝桥杯单片机竞赛平台主视图.jpg" alt="蓝桥杯单片机竞赛平台主视图" width="60%">
+
 
 
 ## 文件结构
@@ -30,7 +32,7 @@
   - 平台测试程序@12MHz.hex：CT107D测试程序
   - 测试流程说明
 
-- [7]竞赛平台主视图：CT107D主视图
+- [7]图片：附图
 
 
 
@@ -47,8 +49,13 @@
 ## 学习资源获取
 
 - QQ交流群：824313199
-- 微信公众号：微信搜索“四梯”
+
 - 四梯评测网获取更多竞赛资讯：https://4t.wiki/
   - 交流社区：https://www.4t.wiki/community
   - 学习资源：https://www.4t.wiki/curriculum
-- Bilibili平台：参赛选手经验分享、试题解析，B站搜索“四梯科技”
+  
+- Bilibili平台：参赛选手经验分享、试题解析、课程学习，B站搜索“四梯科技”
+
+- 微信公众号：微信搜索“四梯”
+
+  <div style="text-align: center;">   <img src="[7]图片/4T_B站.png" alt="4T_B站" width="20%" style="display: inline-block;">   <img src="[7]图片/4T_公众号.png" alt="4T_公众号" width="20%" style="display: inline-block;"> </div> 
